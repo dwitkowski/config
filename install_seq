@@ -1,0 +1,70 @@
+---
+- hosts: localhost
+  connection: local
+
+  tasks:
+    - name: Set dynamic variables
+      set_fact:
+        current_user: "{{ lookup('env', 'USER') | quote }}"
+
+    - name: "Set Show EQ version"
+      set_fact:
+        showeq_ver: '6.3.13'
+
+    - name: 'Set Show EQ file name'
+      set_fact:  
+        showeq_file: 'showeq-{{ showeq_ver }}.tar.bz2'
+
+    - name: 'Set Show EQ directory'
+      set_fact:
+        showeq_dir: '/tmp/showeq-{{ showeq_ver }}'
+
+    - name: 'Show EQ already download?'
+      stat:
+        path: '/tmp/{{ showeq_file }}'
+      register: showeq_file_check
+
+    - name: 'Download Show EQ source tarball'
+      get_url:
+        url: 'https://sourceforge.net/projects/seq/files/ShowEQ/Showeq-{{ showeq_ver }}/showeq-{{ showeq_ver }}.tar.bz2/download'
+        dest: '/tmp/{{ showeq_file }}'
+        mode: '0755'
+      when: not showeq_file_check.stat.exists
+
+ 
+    - name: 'Show EQ already extracted?'
+      stat:
+        path: '/tmp/{{ showeq_dir }}'
+      register: showeq_dir_check   
+
+    - name: 'Extract compressed files'
+      unarchive: 
+        src: '/tmp/{{ showeq_file }}'
+        dest: '/tmp'
+      when: not showeq_dir_check.stat.exists
+
+    - name: 'Install package dependencies'
+      become: yes
+      apt:
+        name: build-essential, libx11-dev, libxext-dev, libpng-dev, libice-dev, qtbase5-dev, libpcap-dev
+        state: present
+
+    - name: 'Configure'
+      command: './configure'
+      args:
+        chdir: '{{ showeq_dir }}'
+
+    - name: 'Make'
+      command: 'make'
+      args:
+        chdir: '{{ showeq_dir }}'
+
+    - name: 'Install'
+      become: yes
+      command: 'make install'
+      args:
+        chdir: '{{ showeq_dir }}'
+
+    - name: 'Install complete'
+      debug:
+        msg: "Installation complete. Run 'sudo showeq' to start."
