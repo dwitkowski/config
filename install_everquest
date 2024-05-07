@@ -1,0 +1,88 @@
+---
+- hosts: localhost
+  connection: local
+  become: yes
+  
+  tasks:
+    - name: Set dynamic variables
+      set_fact:
+        current_user: "{{ lookup('env', 'USER') | quote }}"
+
+    - name: Set static variables
+      set_fact:
+        wineprefix: "/home/{{ current_user }}/.wine/everquest"
+        winearch: "win64"
+        everquest_installer: "/tmp/eq_setup.exe"
+
+    - name: Install Lutris
+      apt:
+        name:
+          - lutris
+        state: present
+
+    - name: Install Wine
+      apt:
+        name:
+          - wine64
+          - wine32
+        state: present
+
+    - name: Download Winetricks
+      get_url:
+        url: https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
+        dest: /usr/local/bin/winetricks
+        mode: '0755'
+
+    - name: Download Everquest
+      get_url:
+        url: "https://launch.daybreakgames.com/installer/EQ_setup.exe?v=12"
+        dest: /tmp/eq_setup.exe
+        mode: '0755'
+
+    - name: Install Winetricks dependencies
+      apt:
+        name:
+          - cabextract
+          - unzip
+          - wget
+        state: present
+
+    - name: Create Wine prefix directory
+      file:
+        path: "{{ wineprefix }}"
+        state: directory
+        owner: "{{ current_user }}"
+        group: "{{ current_user }}"
+        mode: '0755'
+
+    - name: Set WINEPREFIX environment variable
+      lineinfile:
+        path: /home/{{ current_user }}/.profile
+        line: 'export WINEPREFIX="{{ wineprefix }}"'
+        state: present
+
+    - name: Set WINEARCH environment variable
+      lineinfile:
+        path: /home/{{ current_user }}/.profile
+        line: 'export WINEARCH="{{ winearch }}"'
+        state: present
+
+    - name: Install DLLs and fonts required by Everquest into Wine prefix
+      command: winetricks dxvk corefonts
+      become_user: "{{ current_user }}"
+      environment:
+        WINEPREFIX: "{{ wineprefix }}"
+        WINEARCH: "{{ winearch }}"
+    
+    - name: Check if Everquest already installed
+      stat:
+        path: "{{ wineprefix }}/drive_c/users/Public/'Daybreak Game Company'/'Installed Games'/EverQuest/eqgame.exe"
+      register: everquest_installed
+
+    - name: Run Everquest installer
+      command: wine "{{ everquest_installer }}"
+      become_user: "{{ current_user }}"
+      environment:
+        WINEPREFIX: "{{ wineprefix }}"
+        WINEARCH: "{{ winearch }}"
+      when: not everquest_installed.stat.exists
