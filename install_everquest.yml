@@ -14,29 +14,56 @@
         winearch: "win64"
         everquest_installer: "/tmp/eq_setup.exe"
 
-    - name: Install Lutris
-      apt:
-        name:
-          - lutris
-        state: present
+    - name: Enable 32-bit packages
+      command: 'dpkg --add-architecture i386'
+
+    - name: Create keyring directory
+      file:
+        path: '/etc/apt/keyrings'
+        state: directory
+        owner: 'root'
+        group: 'root'
+        mode: '0755'
+
+    - name: Download the WineHQ archive key
+      get_url: 
+        url: 'https://dl.winehq.org/wine-builds/winehq.key'
+        dest: '/etc/apt/keyrings/winehq-archive.key'
+        mode: '0755'
+
+    - name: Add the WineHQ repository sources
+      get_url: 
+        url: 'https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources'
+        dest: /etc/apt/sources.list.d/
+        mode: '0755'
+
+#    - name: Install Lutris
+#      apt:
+#        name:
+#          - lutris
+#        state: present
+
+    - name: Update sources
+      command: 'apt update'
 
     - name: Install Wine
       apt:
         name:
-          - wine64
-          - wine32
+           - winehq-devel
+#          - wine64
+#          - wine32
         state: present
 
     - name: Download Winetricks
       get_url:
-        url: https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
-        dest: /usr/local/bin/winetricks
+        url: 'https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks'
+        dest: '/usr/local/bin/winetricks'
         mode: '0755'
 
     - name: Download Everquest
       get_url:
-        url: "https://launch.daybreakgames.com/installer/EQ_setup.exe?v=12"
-        dest: /tmp/eq_setup.exe
+        url: 'https://launch.daybreakgames.com/installer/EQ_setup.exe?v=12'
+        dest: '/tmp/eq_setup.exe'
         mode: '0755'
 
     - name: Install Winetricks dependencies
@@ -57,13 +84,13 @@
 
     - name: Set WINEPREFIX environment variable
       lineinfile:
-        path: /home/{{ current_user }}/.profile
+        path: '/home/{{ current_user }}/.profile'
         line: 'export WINEPREFIX="{{ wineprefix }}"'
         state: present
 
     - name: Set WINEARCH environment variable
       lineinfile:
-        path: /home/{{ current_user }}/.profile
+        path: '/home/{{ current_user }}/.profile'
         line: 'export WINEARCH="{{ winearch }}"'
         state: present
 
