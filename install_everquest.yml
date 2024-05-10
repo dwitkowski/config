@@ -50,8 +50,8 @@
       apt:
         name:
            - winehq-devel
-#          - wine64
-#          - wine32
+           - wine64
+           - wine32
         state: present
 
     - name: Download Winetricks
