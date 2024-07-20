@@ -9,7 +9,7 @@
 
     - name: "Set Show EQ version"
       set_fact:
-        showeq_ver: '6.3.14'
+        showeq_ver: '6.3.16'
 
     - name: 'Set Show EQ file name'
       set_fact:  
